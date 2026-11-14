@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>FTC BIOBUZZ 2026-2027 Scouting</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { touch-action: manipulation; background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+    .btn-tap:active { transform: scale(0.95); }
+  </style>
+</head>
+<body class="pb-24">
+
+  <header class="sticky top-0 z-50 bg-slate-900 border-b border-amber-500/30 p-3 shadow-lg">
+    <div class="max-w-xl mx-auto flex justify-between items-center">
+      <div>
+        <h1 class="text-lg font-extrabold text-amber-400">🐝 BIOBUZZ™ SCOUT</h1>
+        <p class="text-xs text-slate-400">Offline Queue: <span id="queue-count" class="font-bold text-amber-300">0</span> matches</p>
+      </div>
+      <div class="text-right bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
+        <div class="text-[10px] text-slate-400 uppercase">Est. Contribution</div>
+        <div class="text-xl font-black text-emerald-400"><span id="live-total-pts">0</span> <span class="text-xs font-normal text-slate-400">pts</span></div>
+      </div>
+    </div>
+    <div class="max-w-xl mx-auto grid grid-cols-3 gap-1 mt-2 bg-slate-800 p-1 rounded-lg text-xs font-bold">
+      <button type="button" onclick="switchMainView('scout')" id="nav-scout" class="py-1.5 rounded bg-amber-500 text-slate-950">📝 เก็บข้อมูล</button>
+      <button type="button" onclick="switchMainView('analytics')" id="nav-analytics" class="py-1.5 rounded text-slate-300">📊 วิเคราะห์ & จับคู่</button>
+      <button type="button" onclick="switchMainView('settings')" id="nav-settings" class="py-1.5 rounded text-slate-300">⚙️ ซิงก์ (<span id="nav-q-badge">0</span>)</button>
+    </div>
+  </header>
+
+  <main class="max-w-xl mx-auto p-3">
+
+    <!-- VIEW 1: SCOUTING -->
+    <section id="view-scout" class="space-y-4">
+      <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 space-y-3">
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="text-xs text-slate-400">Match No.</label>
+            <input type="number" id="Match_No" value="1" class="w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg p-2 text-center font-bold text-lg">
+          </div>
+          <div>
+            <label class="text-xs text-slate-400">Team No.</label>
+            <input type="number" id="Team_No" placeholder="เช่น 35816" class="w-full mt-1 bg-slate-900 border border-amber-500/60 rounded-lg p-2 text-center font-bold text-lg text-amber-300">
+          </div>
+          <div>
+            <label class="text-xs text-slate-400">Alliance</label>
+            <select id="Alliance" class="w-full mt-1 bg-red-950 border border-red-500 rounded-lg p-2 font-bold text-center text-red-300" onchange="updateAllianceColor(this)">
+              <option value="Red">🔴 RED</option>
+              <option value="Blue">🔵 BLUE</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-xs text-slate-400">จุดปล่อยหุ่น (Start Pos)</label>
+            <select id="Start_Pos" class="w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg p-2 text-sm">
+              <option value="Left">Left (ซ้าย)</option>
+              <option value="Center">Center (กลาง)</option>
+              <option value="Right">Right (ขวา)</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs text-slate-400">ชื่อผู้เก็บข้อมูล (Scout)</label>
+            <input type="text" id="Scout_Name" placeholder="ชื่อของคุณ" class="w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg p-2 text-sm">
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-1.5 bg-slate-900 p-1.5 rounded-xl border border-slate-700 font-bold text-sm">
+        <button type="button" onclick="switchPhase('auto')" id="tab-auto" class="py-2 rounded-lg bg-amber-500 text-slate-950 font-black">1. AUTO (30s)</button>
+        <button type="button" onclick="switchPhase('tele')" id="tab-tele" class="py-2 rounded-lg text-slate-400">2. TELEOP (60s)</button>
+        <button type="button" onclick="switchPhase('end')" id="tab-end" class="py-2 rounded-lg text-slate-400">3. ENDGAME (60s)</button>
+      </div>
+
+      <!-- PHASE 1: AUTO -->
+      <div id="phase-auto" class="space-y-3 bg-slate-800/60 p-3.5 rounded-xl border border-emerald-500/30">
+        <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+          <span class="text-emerald-400 font-bold text-sm">🤖 ช่วงอัตโนมัติ (30 วินาทีแรก)</span>
+          <span class="text-xs text-slate-400">SWARM: <b id="swarm-pts" class="text-emerald-300">0</b>/16 pts</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <button type="button" onclick="toggleBin('Auto_Leave')" id="btn-Auto_Leave" class="btn-tap p-3 rounded-xl border border-slate-600 bg-slate-900 text-left flex justify-between items-center">
+            <div><div class="font-bold text-sm">Auto Leave</div><div class="text-xs text-slate-400">ออกจากจุดเริ่ม (+3)</div></div>
+            <span id="val-Auto_Leave" class="text-xl font-black text-slate-500">NO</span>
+          </button>
+          <button type="button" onclick="toggleBin('Auto_Park')" id="btn-Auto_Park" class="btn-tap p-3 rounded-xl border border-slate-600 bg-slate-900 text-left flex justify-between items-center">
+            <div><div class="font-bold text-sm">Auto Park</div><div class="text-xs text-slate-400">จอดโซนจบ Auto (+5)</div></div>
+            <span id="val-Auto_Park" class="text-xl font-black text-slate-500">NO</span>
+          </button>
+        </div>
+
+        <div id="auto-counters" class="space-y-2.5"></div>
+      </div>
+
+      <!-- PHASE 2: TELEOP -->
+      <div id="phase-tele" class="hidden space-y-3 bg-slate-800/60 p-3.5 rounded-xl border border-amber-500/30">
+        <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+          <span class="text-amber-400 font-bold text-sm">🎮 ช่วงบังคับมือ (ห้ามใส่ NECTAR ในเสา)</span>
+          <span class="text-xs text-slate-400">HIVE Tips: <b id="hive-total-count" class="text-amber-300">0</b> (RP: 4/7)</span>
+        </div>
+        <div id="tele-counters" class="space-y-2.5"></div>
+      </div>
+
+      <!-- PHASE 3: ENDGAME -->
+      <div id="phase-end" class="hidden space-y-3 bg-slate-800/60 p-3.5 rounded-xl border border-purple-500/40">
+        <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+          <span class="text-purple-400 font-bold text-sm">⏳ 60 วินาทีสุดท้าย (ปลดล็อก NECTAR G410)</span>
+        </div>
+
+        <div id="end-counters" class="space-y-2.5"></div>
+
+        <div class="pt-2">
+          <button type="button" onclick="toggleBin('End_Park')" id="btn-End_Park" class="w-full btn-tap p-3.5 rounded-xl border border-slate-600 bg-slate-900 flex justify-between items-center">
+            <div><div class="font-bold">Endgame Park (จอดจบเกม)</div><div class="text-xs text-slate-400">+5 แต้ม (นับรวมโควตา SWARM RP 16 แต้ม)</div></div>
+            <span id="val-End_Park" class="text-xl font-black text-slate-500">NO</span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-700">
+          <div>
+            <label class="text-xs text-slate-400">สถานะหุ่นยนต์</label>
+            <select id="Robot_Status" class="w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg p-2 text-sm font-bold">
+              <option value="Normal">✅ ปกติ (Normal)</option>
+              <option value="Dead">🔌 หุ่นดับ / หลุดเชื่อมต่อ</option>
+              <option value="Tipped">🙃 หุ่นล้ม (Tipped)</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs text-slate-400">ความคล่องคนขับ (1-5)</label>
+            <select id="Driver_Skill" class="w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg p-2 text-sm font-bold text-amber-400">
+              <option value="5">⭐⭐⭐⭐⭐ (5 - เทพมาก)</option>
+              <option value="4">⭐⭐⭐⭐ (4 - ดี)</option>
+              <option value="3" selected>⭐⭐⭐ (3 - ปานกลาง)</option>
+              <option value="2">⭐⭐ (2 - ช้า/ติดขัด)</option>
+              <option value="1">⭐ (1 - ควบคุมไม่ได้)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs text-slate-400">บันทึกจุดเด่น / ปัญหาที่พบ (Notes)</label>
+          <input type="text" id="Notes" placeholder="เช่น ยิง HIVE แม่นมาก, ชอบฟาวล์ถือลูกเกิน 4 ลูก..." class="w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-sm">
+        </div>
+
+        <button type="button" onclick="saveMatchData()" class="w-full btn-tap bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-4 rounded-xl text-lg shadow-lg mt-3">
+          💾 บันทึกข้อมูลแมตช์นี้ (Save & Next)
+        </button>
+      </div>
+    </section>
+
+    <!-- VIEW 2: ANALYTICS -->
+    <section id="view-analytics" class="hidden space-y-4">
+      <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 flex justify-between items-center">
+        <div>
+          <h2 class="font-bold text-amber-400 text-sm">📊 ตารางจัดอันดับทีม (Picklist)</h2>
+          <p class="text-xs text-slate-400">คำนวณจากข้อมูลในเครื่อง + Google Sheets</p>
+        </div>
+        <button type="button" onclick="fetchCloudData()" class="btn-tap bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-2 rounded-lg">
+          🔄 ดึงข้อมูลล่าสุด
+        </button>
+      </div>
+
+      <div class="overflow-x-auto bg-slate-900 rounded-xl border border-slate-700">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-800 text-slate-300 border-b border-slate-700">
+            <tr>
+              <th class="p-2.5">ทีม</th>
+              <th class="p-2.5">แมตช์</th>
+              <th class="p-2.5 text-emerald-400">แต้มเฉลี่ย</th>
+              <th class="p-2.5 text-amber-400">HIVE Tips</th>
+              <th class="p-2.5 text-purple-400">FLOWER</th>
+              <th class="p-2.5">SWARM</th>
+            </tr>
+          </thead>
+          <tbody id="analytics-tbody" class="divide-y divide-slate-800">
+            <tr><td colspan="6" class="p-4 text-center text-slate-500">ยังไม่มีข้อมูล กดปุ่มบันทึกแมตช์ หรือกดดึงข้อมูลล่าสุด</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="bg-slate-800 p-3.5 rounded-xl border border-amber-500/40 space-y-3">
+        <h3 class="font-bold text-amber-400 text-sm">🤝 จำลองการจับคู่พันธมิตร (Alliance Simulator)</h3>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-xs text-slate-400">หุ่นทีมที่ 1</label>
+            <select id="sim-team-1" onchange="runAllianceSim()" class="w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg p-2 text-sm font-bold"></select>
+          </div>
+          <div>
+            <label class="text-xs text-slate-400">หุ่นพันธมิตร</label>
+            <select id="sim-team-2" onchange="runAllianceSim()" class="w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg p-2 text-sm font-bold"></select>
+          </div>
+        </div>
+        <div id="sim-result" class="bg-slate-900 p-3 rounded-lg border border-slate-700 text-xs space-y-1.5">
+          <div class="text-slate-400 text-center">เลือกทีมด้านบนเพื่อดูผลจำลอง</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: SETTINGS -->
+    <section id="view-settings" class="hidden space-y-4">
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-3">
+        <h2 class="font-bold text-amber-400">🔗 เชื่อมต่อ Google Sheets</h2>
+        <input type="url" id="script-url-input" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-xs text-emerald-300" onchange="saveScriptUrl()">
+        <button type="button" onclick="syncOfflineQueue()" class="w-full btn-tap bg-emerald-500 text-slate-950 font-black py-3 rounded-xl text-sm">
+          ☁️ ส่งข้อมูลที่ค้างขึ้น Sheets ทันที
+        </button>
+      </div>
+
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2">
+        <div class="flex justify-between items-center">
+          <h3 class="font-bold text-sm">📦 ข้อมูลในเครื่อง (<span id="local-count">0</span> แมตช์)</h3>
+          <button type="button" onclick="clearLocalData()" class="text-xs text-red-400 underline">ล้างข้อมูล</button>
+        </div>
+        <pre id="local-json-preview" class="bg-slate-950 p-2 rounded text-[10px] text-slate-400 overflow-x-auto max-h-40"></pre>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwT0RIOMDrYV5Cd5l8rmmrpyVqDKwLcua6Oe2vkDRAOGdV2Q9S_DtennuKQgdR-4wQutA/exec';
+
+    var COUNTER_CONFIG = {
+      auto: [
+        { id: 'Auto_HIVE_Tipped', label: 'HIVE Tipped (ยิงจนพลิก)', sub: '+20 แต้ม/ครั้ง | นับโควตา POLLINATOR RP' },
+        { id: 'Auto_CELL_Scored', label: 'CELL Scored (ค้างในรังที่หงาย)', sub: '+2 แต้ม/ลูก (ห้ามถือเกิน 4 ลูก G407)' },
+        { id: 'Auto_FLOWER_Scored', label: 'FLOWER Scored (ใส่ลูกในเสาดอกไม้)', sub: '+2 แต้ม/ลูก เมื่อครองเสาสำเร็จ' },
+        { id: 'Auto_GARDEN_Scored', label: 'GARDEN Scored (ดันเข้าสวน)', sub: '+1 แต้ม/ลูก' }
+      ],
+      tele: [
+        { id: 'Tele_HIVE_Tipped', label: 'HIVE Tipped (ยิงจนรังพลิก)', sub: '+20 แต้ม/ครั้ง | เป้าหมายทีม 4 หรือ 7 ครั้ง' },
+        { id: 'Tele_CELL_Scored', label: 'CELL Scored (ลูกค้างในฝั่งหงาย)', sub: '+2 แต้ม/ลูก' },
+        { id: 'Tele_FLOWER_POLLEN', label: 'FLOWER Pollen (ใส่ลูกสะสมในเสา)', sub: '+2 แต้ม/ลูก (รอปิดจ๊อบด้วย NECTAR ท้ายเกม)' },
+        { id: 'Tele_GARDEN_Scored', label: 'GARDEN Scored (ดันลูกเข้าสวน)', sub: '+1 แต้ม/ลูก' },
+        { id: 'Tele_Cycles_Count', label: 'จำนวนรอบการวิ่ง (Total Cycles)', sub: 'กด +1 ทุกครั้งที่หุ่นวิ่งเก็บลูกแล้วมาทำแต้มครบ 1 รอบ' }
+      ],
+      end: [
+        { id: 'End_NECTAR_Bottom', label: 'NECTAR Bottom Bonus (ลูกแรกก้นเสา)', sub: '+5 แต้ม/เสา (กฎ G410 เฉพาะ 60 วินาทีสุดท้าย)' },
+        { id: 'End_FLOWER_Owned', label: 'FLOWER Ownership (ปิดเสาด้วย NECTAR บนสุด)', sub: 'ครองเสาสำเร็จ! ประเมิน +6 แต้ม/เสา' },
+        { id: 'Penalty_G407_Count', label: '⚠️ ฟาวล์ G407 / G409', sub: 'ถือเกิน 4 ลูก หรือรับลูกกลางอากาศ' }
+      ]
+    };
+
+    var state = {
+      Auto_Leave: 0, Auto_Park: 0, End_Park: 0,
+      Auto_HIVE_Tipped: 0, Auto_CELL_Scored: 0, Auto_FLOWER_Scored: 0, Auto_GARDEN_Scored: 0,
+      Tele_HIVE_Tipped: 0, Tele_CELL_Scored: 0, Tele_FLOWER_POLLEN: 0, Tele_GARDEN_Scored: 0, Tele_Cycles_Count: 0,
+      End_NECTAR_Bottom: 0, End_FLOWER_Owned: 0, Penalty_G407_Count: 0
+    };
+
+    var allRecords = [];
+    var unsyncedQueue = [];
+
+    try {
+      allRecords = JSON.parse(localStorage.getItem('biobuzz_all_records') || '[]');
+      unsyncedQueue = JSON.parse(localStorage.getItem('biobuzz_unsynced') || '[]');
+    } catch (e) {
+      allRecords = [];
+      unsyncedQueue = [];
+    }
+
+    function buildCounters() {
+      var phases = ['auto', 'tele', 'end'];
+      for (var p = 0; p < phases.length; p++) {
+        var phase = phases[p];
+        var container = document.getElementById(phase + '-counters');
+        var list = COUNTER_CONFIG[phase];
+        var html = '';
+        for (var i = 0; i < list.length; i++) {
+          var item = list[i];
+          html += '<div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex justify-between items-center">' +
+            '<div class="pr-2">' +
+              '<div class="font-bold text-sm text-slate-100">' + item.label + '</div>' +
+              '<div class="text-[11px] text-slate-400">' + item.sub + '</div>' +
+            '</div>' +
+            '<div class="flex items-center space-x-2 shrink-0">' +
+              '<button type="button" onclick="changeVal(\'' + item.id + '\', -1)" class="btn-tap w-10 h-10 rounded-lg bg-slate-800 border border-slate-600 text-xl font-bold text-slate-300">-</button>' +
+              '<span id="val-' + item.id + '" class="w-8 text-center text-xl font-black text-amber-400">0</span>' +
+              '<button type="button" onclick="changeVal(\'' + item.id + '\', 1)" class="btn-tap w-12 h-10 rounded-lg bg-amber-500 text-slate-950 text-xl font-black shadow">+</button>' +
+            '</div>' +
+          '</div>';
+        }
+        container.innerHTML = html;
+      }
+    }
+
+    function updateAllianceColor(sel) {
+      if (sel.value === 'Red') {
+        sel.className = 'w-full mt-1 bg-red-950 border border-red-500 rounded-lg p-2 font-bold text-center text-red-300';
+      } else {
+        sel.className = 'w-full mt-1 bg-blue-950 border border-blue-500 rounded-lg p-2 font-bold text-center text-blue-300';
+      }
+    }
+
+    function changeVal(key, delta) {
+      state[key] = Math.max(0, (state[key] || 0) + delta);
+      var el = document.getElementById('val-' + key);
+      if (el) el.innerText = state[key];
+      updateLiveScore();
+    }
+
+    function toggleBin(key) {
+      state[key] = state[key] === 1 ? 0 : 1;
+      var el = document.getElementById('val-' + key);
+      var btn = document.getElementById('btn-' + key);
+      if (state[key] === 1) {
+        el.innerText = 'YES';
+        el.className = 'text-xl font-black text-emerald-400';
+        btn.classList.add('border-emerald-500', 'bg-emerald-950/30');
+      } else {
+        el.innerText = 'NO';
+        el.className = 'text-xl font-black text-slate-500';
+        btn.classList.remove('border-emerald-500', 'bg-emerald-950/30');
+      }
+      updateLiveScore();
+    }
+
+    function updateLiveScore() {
+      var swarmPts = (state.Auto_Leave * 3) + (state.Auto_Park * 5) + (state.End_NECTAR_Bottom * 5) + (state.End_Park * 5);
+      var totalPts = swarmPts
+        + (state.Auto_HIVE_Tipped * 20) + (state.Auto_CELL_Scored * 2) + (state.Auto_FLOWER_Scored * 2) + (state.Auto_GARDEN_Scored * 1)
+        + (state.Tele_HIVE_Tipped * 20) + (state.Tele_CELL_Scored * 2) + (state.Tele_FLOWER_POLLEN * 2) + (state.Tele_GARDEN_Scored * 1)
+        + (state.End_FLOWER_Owned * 6);
+
+      document.getElementById('live-total-pts').innerText = totalPts;
+      document.getElementById('swarm-pts').innerText = swarmPts;
+      document.getElementById('hive-total-count').innerText = state.Auto_HIVE_Tipped + state.Tele_HIVE_Tipped;
+    }
+
+    function switchPhase(phase) {
+      var phases = ['auto', 'tele', 'end'];
+      for (var i = 0; i < phases.length; i++) {
+        var p = phases[i];
+        document.getElementById('phase-' + p).classList.toggle('hidden', p !== phase);
+        var tab = document.getElementById('tab-' + p);
+        tab.className = (p === phase) ? 'py-2 rounded-lg bg-amber-500 text-slate-950 font-black' : 'py-2 rounded-lg text-slate-400';
+      }
+    }
+
+    function switchMainView(view) {
+      var views = ['scout', 'analytics', 'settings'];
+      for (var i = 0; i < views.length; i++) {
+        var v = views[i];
+        document.getElementById('view-' + v).classList.toggle('hidden', v !== view);
+        var nav = document.getElementById('nav-' + v);
+        nav.className = (v === view) ? 'py-1.5 rounded bg-amber-500 text-slate-950' : 'py-1.5 rounded text-slate-300';
+      }
+      if (view === 'analytics') renderAnalytics();
+    }
+
+    function saveMatchData() {
+      var teamNo = document.getElementById('Team_No').value.trim();
+      if (!teamNo) {
+        alert('กรุณากรอกหมายเลขทีม (Team No.) ก่อนบันทึกครับ!');
+        return;
+      }
+      var scoutName = document.getElementById('Scout_Name').value.trim() || 'Scout';
+      localStorage.setItem('biobuzz_scout_name', scoutName);
+
+      var record = {
+        Timestamp: new Date().toISOString(),
+        Match_No: Number(document.getElementById('Match_No').value) || 1,
+        Alliance: document.getElementById('Alliance').value,
+        Team_No: Number(teamNo),
+        Start_Pos: document.getElementById('Start_Pos').value,
+        Scout_Name: scoutName,
+        Auto_Leave: state.Auto_Leave,
+        Auto_HIVE_Tipped: state.Auto_HIVE_Tipped,
+        Auto_CELL_Scored: state.Auto_CELL_Scored,
+        Auto_FLOWER_Scored: state.Auto_FLOWER_Scored,
+        Auto_GARDEN_Scored: state.Auto_GARDEN_Scored,
+        Auto_Park: state.Auto_Park,
+        Tele_HIVE_Tipped: state.Tele_HIVE_Tipped,
+        Tele_CELL_Scored: state.Tele_CELL_Scored,
+        Tele_FLOWER_POLLEN: state.Tele_FLOWER_POLLEN,
+        Tele_GARDEN_Scored: state.Tele_GARDEN_Scored,
+        Tele_Cycles_Count: state.Tele_Cycles_Count,
+        End_NECTAR_Bottom: state.End_NECTAR_Bottom,
+        End_FLOWER_Owned: state.End_FLOWER_Owned,
+        End_Park: state.End_Park,
+        Penalty_G407_Count: state.Penalty_G407_Count,
+        Robot_Status: document.getElementById('Robot_Status').value,
+        Driver_Skill: Number(document.getElementById('Driver_Skill').value),
+        Notes: document.getElementById('Notes').value.trim()
+      };
+
+      allRecords.push(record);
+      unsyncedQueue.push(record);
+      localStorage.setItem('biobuzz_all_records', JSON.stringify(allRecords));
+      localStorage.setItem('biobuzz_unsynced', JSON.stringify(unsyncedQueue));
+
+      updateQueueDisplay();
+      syncOfflineQueue(true);
+
+      document.getElementById('Match_No').value = record.Match_No + 1;
+      document.getElementById('Team_No').value = '';
+      document.getElementById('Notes').value = '';
+
+      var keys = Object.keys(state);
+      for (var i = 0; i < keys.length; i++) {
+        var k = keys[i];
+        state[k] = 0;
+        var el = document.getElementById('val-' + k);
+        if (el) {
+          if (k === 'Auto_Leave' || k === 'Auto_Park' || k === 'End_Park') {
+            el.innerText = 'NO';
+            el.className = 'text-xl font-black text-slate-500';
+            document.getElementById('btn-' + k).classList.remove('border-emerald-500', 'bg-emerald-950/30');
+          } else {
+            el.innerText = '0';
+          }
+        }
+      }
+      updateLiveScore();
+      switchPhase('auto');
+      alert('✅ บันทึกข้อมูลทีม ' + teamNo + ' เรียบร้อย!');
+    }
+
+    function saveScriptUrl() {
+      var val = document.getElementById('script-url-input').value.trim();
+      if (val) localStorage.setItem('biobuzz_script_url', val);
+    }
+
+    function syncOfflineQueue(silent) {
+      var url = localStorage.getItem('biobuzz_script_url') || SCRIPT_URL;
+      if (unsyncedQueue.length === 0) {
+        if (!silent) alert('ข้อมูลทั้งหมดถูกซิงก์ขึ้น Google Sheets เรียบร้อยแล้ว!');
+        return;
+      }
+
+      fetch(url, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(unsyncedQueue)
+      }).then(function() {
+        unsyncedQueue = [];
+        localStorage.setItem('biobuzz_unsynced', '[]');
+        updateQueueDisplay();
+        if (!silent) alert('☁️ ส่งข้อมูลขึ้น Google Sheets สำเร็จ!');
+      }).catch(function() {
+        if (!silent) alert('⚠️ อินเทอร์เน็ตขัดข้อง ข้อมูลยังถูกเก็บไว้ในเครื่องอย่างปลอดภัย');
+      });
+    }
+
+    function fetchCloudData() {
+      var url = localStorage.getItem('biobuzz_script_url') || SCRIPT_URL;
+      fetch(url)
+        .then(function(res) { return res.json(); })
+        .then(function(json) {
+          if (json.status === 'success' && Array.isArray(json.data)) {
+            allRecords = json.data;
+            localStorage.setItem('biobuzz_all_records', JSON.stringify(allRecords));
+            renderAnalytics();
+            alert('🔄 ดึงข้อมูลสำเร็จ! รวมทั้งหมด ' + allRecords.length + ' รายการ');
+          }
+        })
+        .catch(function() {
+          alert('ไม่สามารถดึงข้อมูลได้ กรุณาเช็กอินเทอร์เน็ต');
+        });
+    }
+
+    function calcRecordPts(r) {
+      var swarm = (Number(r.Auto_Leave || 0) * 3) + (Number(r.Auto_Park || 0) * 5) + (Number(r.End_NECTAR_Bottom || 0) * 5) + (Number(r.End_Park || 0) * 5);
+      var total = swarm
+        + (Number(r.Auto_HIVE_Tipped || 0) * 20) + (Number(r.Auto_CELL_Scored || 0) * 2) + (Number(r.Auto_FLOWER_Scored || 0) * 2) + (Number(r.Auto_GARDEN_Scored || 0) * 1)
+        + (Number(r.Tele_HIVE_Tipped || 0) * 20) + (Number(r.Tele_CELL_Scored || 0) * 2) + (Number(r.Tele_FLOWER_POLLEN || 0) * 2) + (Number(r.Tele_GARDEN_Scored || 0) * 1)
+        + (Number(r.End_FLOWER_Owned || 0) * 6);
+      var hives = Number(r.Auto_HIVE_Tipped || 0) + Number(r.Tele_HIVE_Tipped || 0);
+      var flowers = Number(r.End_FLOWER_Owned || 0);
+      return { swarm: swarm, total: total, hives: hives, flowers: flowers };
+    }
+
+    function getTeamAverages() {
+      var map = {};
+      for (var i = 0; i < allRecords.length; i++) {
+        var r = allRecords[i];
+        var t = String(r.Team_No || '');
+        if (!t) continue;
+        if (!map[t]) map[t] = { team: t, count: 0, total: 0, swarm: 0, hives: 0, flowers: 0 };
+        var pts = calcRecordPts(r);
+        map[t].count++;
+        map[t].total += pts.total;
+        map[t].swarm += pts.swarm;
+        map[t].hives += pts.hives;
+        map[t].flowers += pts.flowers;
+      }
+      var arr = [];
+      var keys = Object.keys(map);
+      for (var j = 0; j < keys.length; j++) {
+        var d = map[keys[j]];
+        arr.push({
+          team: d.team,
+          matches: d.count,
+          avgTotal: +(d.total / d.count).toFixed(1),
+          avgSwarm: +(d.swarm / d.count).toFixed(1),
+          avgHives: +(d.hives / d.count).toFixed(1),
+          avgFlowers: +(d.flowers / d.count).toFixed(1)
+        });
+      }
+      arr.sort(function(a, b) { return b.avgTotal - a.avgTotal; });
+      return arr;
+    }
+
+    function renderAnalytics() {
+      var teams = getTeamAverages();
+      var tbody = document.getElementById('analytics-tbody');
+      if (teams.length === 0) return;
+
+      var rowsHtml = '';
+      var optsHtml = '';
+      for (var i = 0; i < teams.length; i++) {
+        var t = teams[i];
+        rowsHtml += '<tr class="hover:bg-slate-800/60">' +
+          '<td class="p-2.5 font-black text-amber-300">#' + (i + 1) + ' ' + t.team + '</td>' +
+          '<td class="p-2.5">' + t.matches + '</td>' +
+          '<td class="p-2.5 font-bold text-emerald-400">' + t.avgTotal + '</td>' +
+          '<td class="p-2.5 font-bold text-amber-400">' + t.avgHives + '</td>' +
+          '<td class="p-2.5 font-bold text-purple-400">' + t.avgFlowers + '</td>' +
+          '<td class="p-2.5">' + t.avgSwarm + '</td>' +
+        '</tr>';
+        optsHtml += '<option value="' + t.team + '">Team ' + t.team + ' (' + t.avgTotal + ' pts)</option>';
+      }
+      tbody.innerHTML = rowsHtml;
+      document.getElementById('sim-team-1').innerHTML = optsHtml;
+      document.getElementById('sim-team-2').innerHTML = optsHtml;
+      if (teams.length > 1) document.getElementById('sim-team-2').selectedIndex = 1;
+      runAllianceSim();
+    }
+
+    function runAllianceSim() {
+      var teams = getTeamAverages();
+      var v1 = document.getElementById('sim-team-1').value;
+      var v2 = document.getElementById('sim-team-2').value;
+      var t1 = null, t2 = null;
+      for (var i = 0; i < teams.length; i++) {
+        if (teams[i].team === v1) t1 = teams[i];
+        if (teams[i].team === v2) t2 = teams[i];
+      }
+      if (!t1 || !t2) return;
+
+      var combTotal = (t1.avgTotal + t2.avgTotal).toFixed(1);
+      var combSwarm = (t1.avgSwarm + t2.avgSwarm).toFixed(1);
+      var combHives = (t1.avgHives + t2.avgHives).toFixed(1);
+
+      var swarmRP = combSwarm >= 16 ? '✅ ได้ SWARM RP (16+ แต้ม)' : '❌ ต่ำกว่า 16 แต้ม';
+      var pollRP = combHives >= 7 ? '🔥 POLLINATOR RP สูงสุด (7+)' : (combHives >= 4 ? '✅ ได้ POLLINATOR RP (4+)' : '⚠️ ไม่ถึง 4 HIVE Tips');
+
+      document.getElementById('sim-result').innerHTML =
+        '<div class="flex justify-between text-sm font-black border-b border-slate-700 pb-1">' +
+          '<span>คะแนนรวมคาดการณ์:</span>' +
+          '<span class="text-emerald-400 text-base">' + combTotal + ' แต้ม</span>' +
+        '</div>' +
+        '<div class="flex justify-between pt-1"><span>รวม HIVE Tips: <b>' + combHives + ' ครั้ง</b></span><span>' + pollRP + '</span></div>' +
+        '<div class="flex justify-between"><span>แต้ม Auto+End: <b>' + combSwarm + ' แต้ม</b></span><span>' + swarmRP + '</span></div>';
+    }
+
+    function updateQueueDisplay() {
+      document.getElementById('queue-count').innerText = unsyncedQueue.length;
+      document.getElementById('nav-q-badge').innerText = unsyncedQueue.length;
+      document.getElementById('local-count').innerText = allRecords.length;
+      document.getElementById('local-json-preview').innerText = JSON.stringify(unsyncedQueue, null, 2);
+    }
+
+    function clearLocalData() {
+      if (confirm('ต้องการล้างข้อมูลที่เก็บไว้ในเครื่องนี้ใช่หรือไม่?')) {
+        allRecords = [];
+        unsyncedQueue = [];
+        localStorage.removeItem('biobuzz_all_records');
+        localStorage.removeItem('biobuzz_unsynced');
+        updateQueueDisplay();
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      buildCounters();
+      document.getElementById('script-url-input').value = localStorage.getItem('biobuzz_script_url') || SCRIPT_URL;
+      document.getElementById('Scout_Name').value = localStorage.getItem('biobuzz_scout_name') || '';
+      updateLiveScore();
+      updateQueueDisplay();
+      renderAnalytics();
+    });
+  </script>
+</body>
+</html>
